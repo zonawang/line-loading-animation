@@ -1,6 +1,6 @@
 # Use the official lightweight Node.js active LTS image.
 # https://hub.docker.com/_/node
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Create and change to the app directory.
 WORKDIR /usr/src/app
@@ -11,7 +11,7 @@ COPY package*.json ./
 
 # Install production dependencies.
 # If you have a package-lock.json, npm ci will be used instead of npm install.
-RUN npm install --only=production
+RUN npm install --only=production --legacy-peer-deps
 
 # Copy local code to the container image.
 COPY . .
@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 8080
 
 # Run the web service on container startup.
-CMD [ "node", "index.js" ]
+CMD [ "node", "--experimental-require-module", "index.js" ]

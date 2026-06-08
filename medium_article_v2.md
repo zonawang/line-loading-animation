@@ -3,10 +3,15 @@
 在開發 LINE Bot 聊天機器人時，我們常遇到一個挑戰：即使後端串接了強大的大語言模型，用戶在看完一段詳細的分析後，常因為不知道接下來該如何繼續追問，導致對話就此中斷。
 
 為了解決這種「被動式一問一答」的互動僵局，並提升整體的用戶體驗，本次開發任務我們專注於優化兩個核心方向：
+
 1. **動態智慧追問（Quick Reply）**：根據每次的對話脈絡，動態生成三個最貼近用戶需求的追問選項。
 2. **專業圖文選單（Rich Menu）**：配置手繪卡牌風格的圖文選單，提供直達「使用指南」與 GitHub 專案的快捷入口。
 
 在實作與部署的過程中，我們遇到了三個關於 API 限制、圖片壓縮及變數作用域的技術挑戰。以下為本次攻克難題與順利上線的技術實踐實錄。
+
+---
+
+📸 **[ 建議在此處插入優化前後的 LINE Bot 互動對比圖，例如：Quick Reply 膠囊按鈕與 Rich Menu 實際手機畫面 ]**
 
 ---
 
@@ -16,7 +21,7 @@
 
 然而，在串接 LINE API 時，我們遇到了硬性限制：
 
-> _❌_ **LINE API 規定：Quick Reply 按鈕的標籤（Label）字數限制，最大只能容納 20 個字！**
+> **LINE API 規定：Quick Reply 按鈕的標籤（Label）字數限制，最大只能容納 20 個字！**
 
 若產生的文字超出此限制，API 將會回傳錯誤並拒絕發送訊息，導致使用者手機上無法正常顯示追問按鈕。
 
@@ -24,25 +29,28 @@
 
 為了解決這項限制，我們採取了雙重防禦機制：
 
-1. **在 Prompt 中限制字數**：
-   ```text
-   每個追問問題必須非常簡短、口語，且嚴格限制在 20 個字以內。
-   ```
-2. **在 JavaScript 程式碼中進行防禦性截斷**：
-   ```javascript
-   const quickReplies = questions.map(q => {
-     // 強制限制在 20 字內，並去除多餘空格
-     const cleanLabel = q.trim().substring(0, 20);
-     return {
-       type: 'action',
-       action: {
-         type: 'message',
-         label: cleanLabel,
-         text: cleanLabel
-       }
-     };
-   });
-   ```
+#### 1. 在 Prompt 中限制字數
+我們在發送給 Gemini 的指令（Prompt）中，特別加入了嚴格的字數緊箍咒：
+```text
+每個追問問題必須非常簡短、口語，且嚴格限制在 20 個字以內。
+```
+
+#### 2. 在 JavaScript 程式碼中進行防禦性截斷
+為了防止模型偶爾超出字數，我們在程式碼中加上了強制的安全截斷與整理邏輯：
+```javascript
+const quickReplies = questions.map(q => {
+  // 強制限制在 20 字內，並去除多餘空格
+  const cleanLabel = q.trim().substring(0, 20);
+  return {
+    type: 'action',
+    action: {
+      type: 'message',
+      label: cleanLabel,
+      text: cleanLabel
+    }
+  };
+});
+```
 
 這項調整確保了 Quick Reply 能夠穩定呈現，用戶只需點擊即可順暢延續話題。
 
@@ -51,15 +59,18 @@
 ## 🧩 第二關：手繪選單與突破 LINE 1MB 上限挑戰
 
 為了提升視覺質感，我們設計了一張手繪卡牌風格的圖文選單圖片 `123.png`。
+
 這張圖的佈局設計為：
 * **左半部**：水晶使用指南（點擊即直出說明書）
 * **右半部**：Zona AI 學習實驗室（點擊直接跳轉至 GitHub 專案網址）
 
-### 💡 衝突診斷：Nginx `413 Request Entity Too Large` 與 1MB 限制
+📸 **[ 建議在此處插入手繪卡牌風格的圖文選單設計圖 123.png ]**
+
+### 💡 衝突診斷：Nginx 413 Request Entity Too Large 與 1MB 限制
 
 由於原始設計圖檔（`123.png`）採用高解析度格式，檔案大小達 8.1 MB。即使縮放至 LINE 規格的 2500x1686 像素，PNG 格式大小仍高達 7.5 MB。上傳時，LINE API 回傳了 `413 Request Entity Too Large` 錯誤，因為 LINE 的 Rich Menu 圖片上傳上限為 **1 MB**。
 
-### 💡 解決方案：`sips` 轉檔壓縮與自動化註冊腳本
+### 💡 解決方案：sips 轉檔壓縮與自動化註冊腳本
 
 我們利用 macOS 內建的 `sips`（Scriptable Image Processing System）工具，將圖片轉為 JPEG 格式並設定品質參數，在兼顧清晰度的前提下將檔案大小精準壓縮至 **955 KB**，順利通過 1MB 限制：
 
@@ -70,7 +81,7 @@ sips -s format jpeg -s formatOptions 70 -z 1686 2500 123.png --out richmenu_resi
 同時，我們撰寫了自動化配置腳本 `create-rich-menu.js`，利用 Node 22 原生的 `fetch` API，完成選單創建、圖片上傳及設定預設選單的完整流程，提高了部署效率：
 
 ```javascript
-// create-rich-menu.js 核心邏輯
+// create-rich-menu.js 核心邏輯片段
 const response = await fetch('https://api.line.me/v2/bot/richmenu', {
   method: 'POST',
   headers: {
@@ -83,11 +94,11 @@ const response = await fetch('https://api.line.me/v2/bot/richmenu', {
 
 ---
 
-## 🧩 第三關：排查 JavaScript `let` 區塊作用域引起的響應異常
+## 🧩 第三關：排查 JavaScript let 區塊作用域引起的響應異常
 
 為了優化回應速度並節省 Token 支出，我們在 Webhook 端設計了攔截機制：當偵測到用戶傳送「使用指南」時，系統將跳過 LLM 處理，直接回傳預設的說明訊息。然而在實際測試中，點擊該按鈕後 Bot 卻無任何回應。
 
-### 💡 衝突診斷：`let` 變數的 Block Scope 限制
+### 💡 衝突診斷：let 變數的 Block Scope 限制
 
 檢視 Cloud Run 伺服器日誌後，發現系統拋出了 `ReferenceError: isGuide is not defined` 錯誤。原因在於以下程式碼中的變數宣告方式：
 

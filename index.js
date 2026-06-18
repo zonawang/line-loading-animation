@@ -717,8 +717,10 @@ async function handleEvent(event, req) {
     console.log(`✨ [IconSwitch] No deity tag found. Falling back to default: "${deity}"`);
   }
 
-  // 6. Generate follow-up Quick Replies
+  // 6. Generate follow-up Quick Replies and Key Points concurrently
   let followUpQuestions = null;
+  let points = [];
+
   if (isGuide) {
     followUpQuestions = [
       '我生日1995年10月12日',
@@ -726,7 +728,28 @@ async function handleEvent(event, req) {
       '天秤座適合戴什麼？'
     ];
   } else {
-    followUpQuestions = await generateFollowUpQuestions(responseText);
+    console.log('⚡ [Parallel] Initiating concurrent key points and quick reply generation...');
+    const results = await Promise.allSettled([
+      generateFollowUpQuestions(responseText),
+      generateKeyPoints(responseText)
+    ]);
+
+    if (results[0].status === 'fulfilled') {
+      followUpQuestions = results[0].value;
+    } else {
+      console.error('❌ Error generating follow-up questions in parallel:', results[0].reason);
+    }
+
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+      points = results[1].value;
+    } else {
+      console.error('❌ Error generating key points in parallel:', results[1].reason);
+      points = [
+        '開啟寧靜思緒，擁抱宇宙指引',
+        '淨化自身磁場，調和日常能量',
+        '點擊下方按鈕讀取完整智慧分析'
+      ];
+    }
   }
 
   // Resolve dynamic URL for local images served via /static
@@ -766,10 +789,7 @@ async function handleEvent(event, req) {
       console.error('❌ Failed to save full response text to Firestore:', fsErr);
     }
 
-    // 8. Generate 3 key takeaways for the card body
-    const points = await generateKeyPoints(responseText);
-
-    // 9. Build the gorgeous colored dynamic Flex Message bubble
+    // 8. Build the gorgeous colored dynamic Flex Message bubble
     replyMessage = buildFlexMessage(deity, points, msgId, iconUrl);
   }
 

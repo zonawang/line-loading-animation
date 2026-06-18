@@ -292,10 +292,10 @@ async function generateKeyPoints(responseText) {
 1. 必須以使用者的視角、條列式提煉（例如：「制定清晰學習計畫，分散焦慮」、「佩戴紫水晶，安定並沉穩思緒」）。
 2. 每個重點必須非常精簡（嚴格限制在 20 個字以內，包括任何標點符號，否則卡片排版會混亂）。
 3. 不要包含任何占星圖案、Emoji 符號或 markdown 粗體。
-4. 格式：請務必只返回一個 JSON 陣列，例如：["重點一", "重點二", "重點三"]。不要有 markdown 的 \`\`\`json 標記，也不要有任何額外的解釋或說明。
+4. 格式：請務必只返回一個 JSON 陣列，例如：["重點一", "重點二", "重點三"]。不要有 markdown 的 \`\`\`json 標記，也不要有任何額外的解釋 or 說明。
 
 【回答內容】
-\${responseText}`;
+${responseText}`;
 
     console.log('[KeyPoints] Generating key points...');
     const result = await llm.apiClient.models.generateContent({
@@ -304,11 +304,11 @@ async function generateKeyPoints(responseText) {
     });
 
     const text = result.text || '';
-    console.log(`[KeyPoints] Model raw output: "\${text.trim()}"`);
+    console.log(`[KeyPoints] Model raw output: "${text.trim()}"`);
 
     let cleanedText = text.trim();
     if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/^```json\\s*/, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();
+      cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
     }
 
     const points = JSON.parse(cleanedText);
@@ -325,8 +325,6 @@ async function generateKeyPoints(responseText) {
   ];
 }
 
-// ==========================================
-// 🎨 Colored Flex Message Bubble Builder
 // ==========================================
 // 🎨 Colored Flex Message Bubble Builder
 // ==========================================
@@ -374,7 +372,7 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
 
   return {
     type: "flex",
-    altText: `🔮 您的專屬星曜指引已送達：\${style.title}`,
+    altText: `🔮 您的專屬星曜指引已送達：${style.title}`,
     sender: {
       name: DEITY_CONFIG[deity].name,
       iconUrl: iconUrl
@@ -482,7 +480,7 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
               contents: [
                 {
                   type: "text",
-                  text: `重點 \${index + 1}`,
+                  text: `重點 ${index + 1}`,
                   color: style.accentColor,
                   size: "sm",
                   weight: "bold",
@@ -514,7 +512,7 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
             action: {
               type: "postback",
               label: "🔮 讀取完整智慧指引",
-              data: `action=get_full_text&id=\${msgId}`
+              data: `action=get_full_text&id=${msgId}`
             }
           }
         ],
@@ -529,7 +527,7 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
 // ==========================================
 async function handlePostbackEvent(event, req) {
   const data = event.postback.data;
-  console.log(`📥 Received postback event with data: "\${data}"`);
+  console.log(`📥 Received postback event with data: "${data}"`);
 
   const params = new URLSearchParams(data);
   const action = params.get('action');
@@ -537,11 +535,11 @@ async function handlePostbackEvent(event, req) {
 
   if (action === 'get_full_text' && msgId) {
     try {
-      console.log(`🔍 Fetching full response from Firestore for ID: "\${msgId}"...`);
+      console.log(`🔍 Fetching full response from Firestore for ID: "${msgId}"...`);
       const doc = await customMemoryService.db.collection('crystal_full_texts').doc(msgId).get();
 
       if (!doc.exists) {
-        console.log(`⚠️ Document with ID: "\${msgId}" not found in Firestore.`);
+        console.log(`⚠️ Document with ID: "${msgId}" not found in Firestore.`);
         return client.replyMessage({
           replyToken: event.replyToken,
           messages: [{
@@ -552,13 +550,13 @@ async function handlePostbackEvent(event, req) {
       }
 
       const { text, deity } = doc.data();
-      console.log(`✅ Full response retrieved successfully. Deity: "\${deity}". Length: \${text.length} characters.`);
+      console.log(`✅ Full response retrieved successfully. Deity: "${deity}". Length: ${text.length} characters.`);
 
       // Resolve dynamic URL for the deity's icon
       let iconUrl = DEITY_CONFIG[deity].iconUrl;
       if (!iconUrl.startsWith('http://') && !iconUrl.startsWith('https://')) {
         const baseUrl = req && req.baseUrlForIcons ? req.baseUrlForIcons : '';
-        iconUrl = `\${baseUrl}/static/\${encodeURIComponent(iconUrl)}`;
+        iconUrl = `${baseUrl}/static/${encodeURIComponent(iconUrl)}`;
       }
 
       // Send the full text response back under the dynamic sender persona
@@ -582,7 +580,7 @@ async function handlePostbackEvent(event, req) {
         replyToken: event.replyToken,
         messages: [{
           type: 'text',
-          text: `❌ 親愛的，連結此智慧指引時能量受到些微干擾，請稍後再試。原因：\${error.message || error}`
+          text: `❌ 親愛的，連結此智慧指引時能量受到些微干擾，請稍後再試。原因：${error.message || error}`
         }]
       });
     }
@@ -636,6 +634,26 @@ async function handleEvent(event, req) {
   const sessionId = `session_${userId}`; // Session is scoped per user
   const messageType = event.message.type;
   console.log(`💬 Processing message from User (${userId}) of type: ${messageType}`);
+
+  // Send immediate warm loading feedback using the reply token to prevent 5s timeout
+  const loadingMessage = {
+    type: 'text',
+    text: '🔮 親愛的，我已收到您的訊息。正在為您靜心連結星曜與水晶磁場，調和專屬能量指引中，請稍候片刻... ✨',
+    sender: {
+      name: '星曜守護導師 艾蓮',
+      iconUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=128&h=128&q=80'
+    }
+  };
+
+  try {
+    await client.replyMessage({
+      replyToken: event.replyToken,
+      messages: [loadingMessage]
+    });
+    console.log('✅ Sent immediate loading message to LINE user to prevent timeout.');
+  } catch (replyErr) {
+    console.error('❌ Failed to send loading message:', replyErr);
+  }
 
   let responseText = '';
   let newMessage = null;
@@ -865,15 +883,15 @@ async function handleEvent(event, req) {
   }
 
   try {
-    console.log(`📨 Replying to LINE user with ${replyMessage.type === 'flex' ? 'Flex Message Card' : 'Plain Text'}...`);
-    const replyResult = await client.replyMessage({
-      replyToken: event.replyToken,
+    console.log(`📨 Pushing to LINE user (${userId}) with ${replyMessage.type === 'flex' ? 'Flex Message Card' : 'Plain Text'}...`);
+    const replyResult = await client.pushMessage({
+      to: userId,
       messages: [replyMessage]
     });
-    console.log('✅ Reply sent successfully.');
+    console.log('✅ Push sent successfully.');
     return replyResult;
   } catch (error) {
-    console.error('❌ Error replying to LINE API:', error);
+    console.error('❌ Error pushing to LINE API:', error);
     throw error;
   }
 }

@@ -280,259 +280,6 @@ ${responseText}`;
   return null;
 }
 
-
-
-// ==========================================
-// 🎯 Key Points Generator for Flex Message Cards
-// ==========================================
-async function generateKeyPoints(responseText) {
-  try {
-    const prompt = `你是一位精通水晶與星盤能量的分析導師。
-請根據以下完整的占星與水晶解析內容，為使用者提煉並精簡出這份指引的「3 個核心重點/開運指引」。
-
-【限制與規範】
-1. 必須以使用者的視角、條列式提煉（例如：「制定清晰學習計畫，分散焦慮」、「佩戴紫水晶，安定並沉穩思緒」）。
-2. 每個重點必須非常精簡（嚴格限制在 20 個字以內，包括任何標點符號，否則卡片排版會混亂）。
-3. 不要包含任何占星圖案、Emoji 符號或 markdown 粗體。
-4. 格式：請務必只返回一個 JSON 陣列，例如：["重點一", "重點二", "重點三"]。不要有 markdown 的 \`\`\`json 標記，也不要有任何額外的解釋 or 說明。
-
-【回答內容】
-${responseText}`;
-
-    console.log('[KeyPoints] Generating key points...');
-    const result = await llm.apiClient.models.generateContent({
-      model: llm.model,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
-
-    const text = result.text || '';
-    console.log(`[KeyPoints] Model raw output: "${text.trim()}"`);
-
-    let cleanedText = text.trim();
-    if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-    }
-
-    const points = JSON.parse(cleanedText);
-    if (Array.isArray(points) && points.length > 0) {
-      return points.slice(0, 3).map(p => typeof p === 'string' ? p.trim().substring(0, 20) : String(p).substring(0, 20));
-    }
-  } catch (error) {
-    console.error('[KeyPoints] Error generating key points:', error);
-  }
-  return [
-    '開啟寧靜思緒，擁抱宇宙指引',
-    '淨化自身磁場，調和日常能量',
-    '點擊下方按鈕讀取完整智慧分析'
-  ];
-}
-
-// ==========================================
-// 🎨 Colored Flex Message Bubble Builder
-// ==========================================
-function buildFlexMessage(deity, points, msgId, iconUrl) {
-  const styles = {
-    ATHENA: {
-      headerBg: "#0d1b2a",
-      bodyBg: "#1b263b",
-      footerBg: "#0d1b2a",
-      textColor: "#e0e1dd",
-      accentColor: "#778da9",
-      btnColor: "#415a77",
-      title: "✨ 雅典娜的智慧指引 ✨"
-    },
-    VENUS: {
-      headerBg: "#3d1a24",
-      bodyBg: "#5c2d3c",
-      footerBg: "#3d1a24",
-      textColor: "#fae1df",
-      accentColor: "#e8999f",
-      btnColor: "#8c3a50",
-      title: "✨ 維納斯的能量調和 ✨"
-    },
-    FORTUNE: {
-      headerBg: "#1e112c",
-      bodyBg: "#2d1b4e",
-      footerBg: "#1e112c",
-      textColor: "#f1e4f3",
-      accentColor: "#d8b4e2",
-      btnColor: "#5a377c",
-      title: "✨ 莫伊萊的命運之輪 ✨"
-    },
-    COSMOS: {
-      headerBg: "#161a1d",
-      bodyBg: "#22252a",
-      footerBg: "#161a1d",
-      textColor: "#f5f6f9",
-      accentColor: "#a3a8b4",
-      btnColor: "#3a4146",
-      title: "✨ 艾蓮的星曜守護指引 ✨"
-    }
-  };
-
-  const style = styles[deity] || styles.COSMOS;
-
-  return {
-    type: "flex",
-    altText: `🔮 您的專屬星曜指引已送達：${style.title}`,
-    sender: {
-      name: DEITY_CONFIG[deity].name,
-      iconUrl: iconUrl
-    },
-    contents: {
-      type: "bubble",
-      styles: {
-        body: { backgroundColor: style.bodyBg },
-        footer: { backgroundColor: style.footerBg }
-      },
-      hero: {
-        type: "image",
-        url: iconUrl,
-        size: "full",
-        aspectRatio: "20:13",
-        aspectMode: "cover",
-        action: {
-          type: "uri",
-          uri: iconUrl
-        }
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: style.title,
-            weight: "bold",
-            size: "xl",
-            color: style.textColor
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            margin: "lg",
-            spacing: "sm",
-            contents: points.map((point, index) => ({
-              type: "box",
-              layout: "baseline",
-              spacing: "sm",
-              contents: [
-                {
-                  type: "text",
-                  text: `重點 ${index + 1}`,
-                  color: style.accentColor,
-                  size: "sm",
-                  flex: 1,
-                  weight: "bold"
-                },
-                {
-                  type: "text",
-                  text: point,
-                  wrap: true,
-                  color: style.textColor,
-                  size: "sm",
-                  flex: 5
-                }
-              ]
-            }))
-          }
-        ]
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        spacing: "sm",
-        contents: [
-          {
-            type: "button",
-            style: "primary",
-            color: style.btnColor,
-            height: "sm",
-            action: {
-              type: "postback",
-              label: "🔮 讀取完整智慧指引",
-              data: `action=get_full_text&id=${msgId}`
-            }
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [],
-            margin: "sm"
-          }
-        ],
-        flex: 0
-      }
-    }
-  };
-}
-
-// ==========================================
-// 📥 Postback Event Handler (讀取完整指引)
-// ==========================================
-async function handlePostbackEvent(event, req) {
-  const data = event.postback.data;
-  console.log(`📥 Received postback event with data: "${data}"`);
-
-  const params = new URLSearchParams(data);
-  const action = params.get('action');
-  const msgId = params.get('id');
-
-  if (action === 'get_full_text' && msgId) {
-    try {
-      console.log(`🔍 Fetching full response from Firestore for ID: "${msgId}"...`);
-      const doc = await customMemoryService.db.collection('crystal_full_texts').doc(msgId).get();
-
-      if (!doc.exists) {
-        console.log(`⚠️ Document with ID: "${msgId}" not found in Firestore.`);
-        return client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{
-            type: 'text',
-            text: '🔮 親愛的，這則指引的能量連結已隨時間淡去。不妨重新向我提出您的水晶或占星諮詢，好讓我為您做新的調和與解讀。'
-          }]
-        });
-      }
-
-      const { text, deity } = doc.data();
-      console.log(`✅ Full response retrieved successfully. Deity: "${deity}". Length: ${text.length} characters.`);
-
-      // Resolve dynamic URL for the deity's icon
-      let iconUrl = DEITY_CONFIG[deity].iconUrl;
-      if (!iconUrl.startsWith('http://') && !iconUrl.startsWith('https://')) {
-        const baseUrl = req && req.baseUrlForIcons ? req.baseUrlForIcons : '';
-        iconUrl = `${baseUrl}/static/${encodeURIComponent(iconUrl)}`;
-      }
-
-      // Send the full text response back under the dynamic sender persona
-      const replyMessage = {
-        type: 'text',
-        text: text,
-        sender: {
-          name: DEITY_CONFIG[deity].name,
-          iconUrl: iconUrl
-        }
-      };
-
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [replyMessage]
-      });
-      console.log('✅ Full response sent to user successfully via postback reply.');
-    } catch (error) {
-      console.error('❌ Error handling postback get_full_text:', error);
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{
-          type: 'text',
-          text: `❌ 親愛的，連結此智慧指引時能量受到些微干擾，請稍後再試。原因：${error.message || error}`
-        }]
-      });
-    }
-  }
-  return null;
-}
-
 // ==========================================
 // 🪐 Deity Config for Icon Switch (動態身份頭像設定)
 // ==========================================
@@ -559,11 +306,6 @@ const DEITY_CONFIG = {
 // 🎯 Event Handler
 // ==========================================
 async function handleEvent(event, req) {
-  // Check if it's a postback event
-  if (event.type === 'postback') {
-    return handlePostbackEvent(event, req);
-  }
-
   // Ignore non-message events
   if (event.type !== 'message') {
     return null;
@@ -717,10 +459,8 @@ async function handleEvent(event, req) {
     console.log(`✨ [IconSwitch] No deity tag found. Falling back to default: "${deity}"`);
   }
 
-  // 6. Generate follow-up Quick Replies and Key Points concurrently
+  // 6. Generate follow-up Quick Replies
   let followUpQuestions = null;
-  let points = [];
-
   if (isGuide) {
     followUpQuestions = [
       '我生日1995年10月12日',
@@ -728,28 +468,7 @@ async function handleEvent(event, req) {
       '天秤座適合戴什麼？'
     ];
   } else {
-    console.log('⚡ [Parallel] Initiating concurrent key points and quick reply generation...');
-    const results = await Promise.allSettled([
-      generateFollowUpQuestions(responseText),
-      generateKeyPoints(responseText)
-    ]);
-
-    if (results[0].status === 'fulfilled') {
-      followUpQuestions = results[0].value;
-    } else {
-      console.error('❌ Error generating follow-up questions in parallel:', results[0].reason);
-    }
-
-    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
-      points = results[1].value;
-    } else {
-      console.error('❌ Error generating key points in parallel:', results[1].reason);
-      points = [
-        '開啟寧靜思緒，擁抱宇宙指引',
-        '淨化自身磁場，調和日常能量',
-        '點擊下方按鈕讀取完整智慧分析'
-      ];
-    }
+    followUpQuestions = await generateFollowUpQuestions(responseText);
   }
 
   // Resolve dynamic URL for local images served via /static
@@ -759,39 +478,15 @@ async function handleEvent(event, req) {
     iconUrl = `${baseUrl}/static/${encodeURIComponent(iconUrl)}`;
   }
 
-  // Send the reply back to the user on LINE
-  let replyMessage;
-
-  if (isGuide) {
-    // For static guide, reply with plain text immediately
-    replyMessage = {
-      type: 'text',
-      text: responseText,
-      sender: {
-        name: DEITY_CONFIG[deity].name,
-        iconUrl: iconUrl
-      }
-    };
-  } else {
-    // 7. Generate a unique ID for this message
-    const msgId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-
-    // Save full text to Firestore
-    try {
-      console.log(`💾 Saving full response text to Firestore under ID: "${msgId}"...`);
-      await customMemoryService.db.collection('crystal_full_texts').doc(msgId).set({
-        text: responseText,
-        deity: deity,
-        timestamp: Date.now()
-      });
-      console.log('✅ Full response text saved to Firestore successfully.');
-    } catch (fsErr) {
-      console.error('❌ Failed to save full response text to Firestore:', fsErr);
+  // Send the reply back to the user on LINE with dynamic sender
+  const replyMessage = {
+    type: 'text',
+    text: responseText,
+    sender: {
+      name: DEITY_CONFIG[deity].name,
+      iconUrl: iconUrl
     }
-
-    // 8. Build the gorgeous colored dynamic Flex Message bubble
-    replyMessage = buildFlexMessage(deity, points, msgId, iconUrl);
-  }
+  };
 
   if (followUpQuestions && followUpQuestions.length > 0) {
     replyMessage.quickReply = {
@@ -808,7 +503,7 @@ async function handleEvent(event, req) {
   }
 
   try {
-    console.log(`📨 Replying to LINE user (${userId}) with ${replyMessage.type === 'flex' ? 'Flex Message Card' : 'Plain Text'}...`);
+    console.log(`📨 Replying to LINE user: "${responseText.substring(0, 50)}..."`);
     const replyResult = await client.replyMessage({
       replyToken: event.replyToken,
       messages: [replyMessage]

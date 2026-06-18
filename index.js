@@ -381,34 +381,9 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
     },
     contents: {
       type: "bubble",
-      size: "mega",
       styles: {
-        header: { backgroundColor: style.headerBg },
         body: { backgroundColor: style.bodyBg },
-        footer: { backgroundColor: style.footerBg, separator: true, separatorColor: style.btnColor }
-      },
-      header: {
-        type: "box",
-        layout: "horizontal",
-        contents: [
-          {
-            type: "image",
-            url: iconUrl,
-            size: "xs",
-            aspectRatio: "1:1",
-            aspectMode: "cover",
-            style: "circle"
-          },
-          {
-            type: "text",
-            text: DEITY_CONFIG[deity].name,
-            color: style.textColor,
-            size: "sm",
-            weight: "bold",
-            gravity: "center",
-            margin: "md"
-          }
-        ]
+        footer: { backgroundColor: style.footerBg }
       },
       hero: {
         type: "image",
@@ -434,47 +409,6 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
           },
           {
             type: "box",
-            layout: "baseline",
-            margin: "md",
-            contents: [
-              {
-                type: "icon",
-                size: "sm",
-                url: "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
-              },
-              {
-                type: "icon",
-                size: "sm",
-                url: "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
-              },
-              {
-                type: "icon",
-                size: "sm",
-                url: "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
-              },
-              {
-                type: "icon",
-                size: "sm",
-                url: "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
-              },
-              {
-                type: "icon",
-                size: "sm",
-                url: "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
-              },
-              {
-                type: "text",
-                text: "能量共鳴 5.0",
-                size: "sm",
-                color: style.accentColor,
-                margin: "md",
-                flex: 0,
-                weight: "bold"
-              }
-            ]
-          },
-          {
-            type: "box",
             layout: "vertical",
             margin: "lg",
             spacing: "sm",
@@ -488,8 +422,8 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
                   text: `重點 ${index + 1}`,
                   color: style.accentColor,
                   size: "sm",
-                  weight: "bold",
-                  flex: 2
+                  flex: 1,
+                  weight: "bold"
                 },
                 {
                   type: "text",
@@ -497,7 +431,7 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
                   wrap: true,
                   color: style.textColor,
                   size: "sm",
-                  flex: 8
+                  flex: 5
                 }
               ]
             }))
@@ -519,6 +453,12 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
               label: "🔮 讀取完整智慧指引",
               data: `action=get_full_text&id=${msgId}`
             }
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [],
+            margin: "sm"
           }
         ],
         flex: 0

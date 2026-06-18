@@ -392,9 +392,12 @@ function buildFlexMessage(deity, points, msgId, iconUrl) {
         layout: "horizontal",
         contents: [
           {
-            type: "avatar",
+            type: "image",
             url: iconUrl,
-            size: "sm"
+            size: "xs",
+            aspectRatio: "1:1",
+            aspectMode: "cover",
+            style: "circle"
           },
           {
             type: "text",

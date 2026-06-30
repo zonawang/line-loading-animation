@@ -1,58 +1,55 @@
-# 🔮 LINE Crystal Astrology Bot - 雙選單流暢切換與五宮格導覽升級 🔮
+# ⚡ LINE Loading Animation & Serverless Deduplication Bot ⚡
 
-本專案已完成最新階段的升級，引進了 **LINE 雙選單（Dual Rich Menu）無縫用戶端切換**，搭配極具質感的**五宮格導覽設計**與**後端高質感靜態導覽回覆**。
-
----
-
-## 🌟 本次新增核心功能
-
-### 1. 🔀 用戶端雙選單流暢切換 (Client-side Rich Menu Switch)
-* **零延遲切換**：摒棄了傳統伺服器端重新連結選單的繁複請求，改用 LINE Messaging API 的 `richmenuswitch` 動作，配合 `alias_main_menu` 與 `alias_five_grids` 別名。
-* **雙向跳轉**：
-  * 當用戶點擊**主選單左半部**時，選單會瞬間切換成極具儀式感的「五宮格導覽圖」。
-  * 當用戶在五宮格選單中點擊底部的**「回到上一頁」**時，會秒速切換回原本的主選單。
-* **完全離線級觸發**：切換過程在手機本地端直接完成，無需等待伺服器 round-trip 處理，打造絲滑的互動體驗。
-
-### 2. 🎨 精美五宮格導覽與圖片極致壓縮
-* **視覺美化**：我們將 `五宮格.png` 依據 LINE 官方 Rich Menu 規格，等比例縮放至標準大選單尺寸 `2500x1686 px`。
-* **無損畫質高壓縮 (769KB)**：針對 LINE 限制 Rich Menu 圖片必須在 1MB 以內的硬性規定，我們使用優化技術將其轉為 75% 壓縮率的 JPEG（`五宮格_resized.jpg`），成功在保持絕對精緻視覺的前提下，將體積壓到 `769KB` 順利上傳。
-
-### 3. 🗺️ 五格客製化區域配置 (2x2 + 1 網格)
-* **Top-Left (0, 0, 1250, 674)** ➡️ 點擊發送文字「**閱讀指南**」
-* **Top-Right (1250, 0, 1250, 674)** ➡️ 點擊發送文字「**認識水晶**」
-* **Mid-Left (0, 674, 1250, 674)** ➡️ 點擊發送文字「**淨化方法**」
-* **Mid-Right (1250, 674, 1250, 674)** ➡️ 點擊發送文字「**功效與佩戴**」
-* **Bottom (0, 1348, 2500, 338)** ➡️ 用戶端無縫切換回主選單別名（`alias_main_menu`）
-
-### 4. 💬 後端高質感專家導覽回覆
-* 當 Webhook 偵測到用戶點擊五宮格發送的關鍵字時，會自動繞過 LLM 分析，直接輸出精心撰寫、具備高度知性與療癒美感的排版模板，並附帶對應的 Quick Replies 引導。這不僅節省了 API Token，更能保證 100% 穩健且秒速的回覆：
-  * **「閱讀指南」**：指引生日提供與水晶照鑑定流程。
-  * **「認識水晶」**：教授如何透過直覺與脈輪尋找專屬守護水晶。
-  * **「淨化方法」**：詳細剖析海鹽、薰香、月光與聲波四大水晶充能法則。
-  * **「功效與佩戴」**：科普人體氣場左手（注入能量）與右手（釋放淨化）的佩戴玄學。
-
-### 5. ⏳ LINE Loading Animation 載入中動畫與 Serverless 安全防重複與去重防護
-為了帶給用戶極致的高級感體驗，並徹底解決在 Serverless (如 Google Cloud Run) 部署環境下**「立即回傳 200 會導致 CPU 被凍結無法執行非同步 LLM 運算」**以及**「保持連線可能因 LINE 5秒逾時重試而重複觸發載入動畫與回覆」**的兩難衝突，本階段新增了以下高併發防護機制：
-* **⏳ 載入動畫提示 (Loading Animation)**：在 Gemini ADK 進行大型語言模型（LLM）能量分析、圖片辨識或回覆生成的繁重任務時，呼叫 LINE 的 `showLoadingAnimation` API，自動在用戶聊天視窗中展示長達 15 秒的「正在輸入/讀取中」動態指示器，此動畫在回應發送時會自動立即消失，大幅降低用戶等待的焦慮感，完美消弭延遲感。
-* **⚡ 雲端連線保持 (Connection Holding)**：在 Cloud Run 部署時，伺服器不立即回覆 LINE Webhook，而是使用 `await Promise.all(...)` 保持 HTTP 請求連線開啟直到 `handleEvent` 處理完畢並完成 `replyMessage`，以確保 Cloud Run 容器的 CPU 資源分配始終處於高活絡狀態，順利跑完 Gemini 的推論。
-* **🔒 雙重快取防重複機制 (Double-Set Deduplication)**：
-  * 由於保持連線，若 LLM 運算超過 5 秒，LINE 平台會判定逾時並發動多達 3 次的「自動重試（Retry）」。
-  * 為了防堵多次重試引起的重複執行、重複呼叫載入動畫或產生重複回覆，後端設有 `activeEvents` (正在處理中) 與 `completedEvents` (已完成) 兩個記憶體 Set 快取。
-  * **重試阻斷**：當相同的 `webhookEventId` 在「處理中」或「已完成」狀態下被再次觸發時，後端會**秒速回傳 200 OK 並直接捨棄該重試請求**，確保每個訊息 100% 僅被執行一次、動畫不重複跳閃。
-  * **快取自動釋放**：設有 `setInterval` 排程，每 10 分鐘自動釋放快取，保證高併發下的記憶體安全。
+本專案展示了如何在 LINE Bot 中整合 **LINE Loading Animation (載入中動畫)**，並專為 Serverless 部署環境（如 Google Cloud Run）設計了一套**「高併發、防 CPU 凍結、防重複觸發」的雙重快取去重機制**。
 
 ---
 
-## 🛠️ 部署與環境建立
-專案中使用全新寫就的 [`setup-rich-menus.js`](./setup-rich-menus.js) 設定腳本，可自動進行雙選單建立、圖片上傳、Alias 別名註冊及主選單預設。
+## 🌟 核心功能說明
 
-### 一鍵註冊/重設 Rich Menus：
-確保您的 `.env` 檔案內包含正確的 `LINE_CHANNEL_ACCESS_TOKEN`，接著在專案目錄下執行：
-```bash
-node setup-rich-menus.js
+### 1. ⏳ LINE Loading Animation (載入中動畫)
+* **極致順暢的等待體驗**：在後端進行 Gemini 能量分析、圖像辨識或大型語言模型（LLM）推論等繁重任務時，呼叫 LINE 官方的 `showLoadingAnimation` API。
+* **動態自動消失**：自動在用戶的手機聊天視窗中顯示「讀取中/正在輸入」的載入動畫（預設顯示時間 15 秒）。一旦後端回應發送，載入動畫會立即且自動消失，大幅緩解用戶等待的焦慮感，營造極具高級感的互動體驗。
+
+### 2. ⚡ 雲端連線保持 (Serverless Connection Holding)
+* **解決 CPU 凍結難題**：在 Google Cloud Run 等 Serverless 平台上，若在收到 Webhook 後立即回傳 `200 OK`，平台會為了節省資源而**立即凍結 (Throttle) 容器的 CPU**。這會導致背景正在運作的非同步 LLM 任務被暫停，並造成 `replyToken` 過期失效。
+* **連線保持技術**：本專案使用 `await Promise.all(...)` 保持與 LINE Webhook 的 HTTP 請求連線開啟，直到事件主邏輯完全執行完畢並成功發送回覆，確保容器 CPU 資源在推論期間始終處於高活絡分配狀態。
+
+### 3. 🔒 雙重快取防重複去重機制 (Double-Set Deduplication)
+* **阻斷 5 秒超時重試**：由於連線保持機制會讓 Webhook 回應時間拉長，一旦超過 5 秒，LINE 平台便會判定逾時並發動多達 3 次的「自動重試（Retry）」。
+* **防重複機制**：
+  * **處理中快取 (`activeEvents`)**：當相同的 `webhookEventId` 正在執行中，後續進來的重試請求會被秒速阻斷並直接回傳 `200 OK` 丟棄，防堵重複載入動畫與重複呼叫 LLM。
+  * **已完成快取 (`completedEvents`)**：任務完成後，其 ID 會記錄至已完成集合。後續任何遲到的重試請求皆會被直接忽視，保證「僅執行一次 (Exactly-Once)」的安全防護。
+  * **記憶體自動釋放**：設有 10 分鐘定時排程，自動清除快取 Set，避免高併發下的記憶體溢出。
+
+---
+
+## 🛠️ 環境配置與部署
+
+### 1. 本地環境變數設定 (`.env`)
+在專案目錄下建立 `.env` 檔案，並填入以下設定：
+
+```env
+PORT=8080
+
+# LINE Channel 設定
+LINE_CHANNEL_SECRET=your_channel_secret_here
+LINE_CHANNEL_ACCESS_TOKEN=your_channel_access_token_here
+
+# Gemini / Vertex AI 設定 (自動適配)
+GCP_PROJECT=your_gcp_project_id_here
+GCP_LOCATION=us-central1
+VERTEX_AI_MODEL=gemini-2.5-flash
 ```
 
-### 一鍵部署至 Cloud Run：
-```bash
-gcloud run deploy line-echo-bot --source . --region asia-east1
-```
+### 2. 執行與部署
+
+* **本地端啟動**：
+  ```bash
+  npm install
+  npm start
+  ```
+
+* **一鍵部署至 Google Cloud Run**：
+  ```bash
+  gcloud run deploy line-echo-bot --source . --region asia-east1
+  ```
